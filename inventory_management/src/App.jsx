@@ -136,8 +136,6 @@ function App() {
           throw new Error(res.message || 'Failed to update product');
         }
       }
-    } catch (err) {
-      throw err; // Passed to ProductModal internal form error state
     } finally {
       setIsSubmitting(false);
     }

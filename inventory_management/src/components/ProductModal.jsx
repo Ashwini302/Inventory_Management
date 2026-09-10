@@ -13,6 +13,7 @@ export const ProductModal = ({ isOpen, mode, product, onClose, onSubmit, isSubmi
   const [generalError, setGeneralError] = useState('');
 
   useEffect(() => {
+    if (!isOpen) return;
     if (product && mode === 'edit') {
       setFormData({
         name: product.name || '',
@@ -32,7 +33,7 @@ export const ProductModal = ({ isOpen, mode, product, onClose, onSubmit, isSubmi
     }
     setErrors({});
     setGeneralError('');
-  }, [product, mode, isOpen]);
+  }, [isOpen, product, mode]);
 
   if (!isOpen) return null;
 
