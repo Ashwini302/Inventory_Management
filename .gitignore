@@ -22,6 +22,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Root package lock if generated
+/package-lock.json
+
 # Editor & OS files
 .DS_Store
 Thumbs.db
