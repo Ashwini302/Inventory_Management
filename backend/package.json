@@ -1,0 +1,29 @@
+{
+  "name": "inventory-management-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Inventory Management System",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "keywords": [
+    "inventory",
+    "express",
+    "mongoose",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.12.0"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^10.1.4",
+    "nodemon": "^3.1.9"
+  }
+}
