@@ -2,9 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import productService from './services/productService';
 import Header from './components/Header';
 import DashboardStats from './components/DashboardStats';
+import StockHealthBar from './components/StockHealthBar';
 import SearchBar from './components/SearchBar';
 import CategoryFilter from './components/CategoryFilter';
 import ProductTable from './components/ProductTable';
+import ProductCardsGrid from './components/ProductCardsGrid';
 import ProductModal from './components/ProductModal';
 import ConfirmDeleteModal from './components/ConfirmDeleteModal';
 import NotificationToast from './components/NotificationToast';
@@ -16,6 +18,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isBackendConnected, setIsBackendConnected] = useState(true);
+
+  // View Mode: 'table' | 'grid'
+  const [viewMode, setViewMode] = useState('table');
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,7 +49,6 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      // First check health
       await productService.checkHealth();
       setIsBackendConnected(true);
 
@@ -79,21 +83,56 @@ function App() {
   // Filter products based on search query, selected category, and low stock toggle
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      // Search by name (case-insensitive)
       const matchesSearch = searchQuery.trim() === '' || 
         product.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
 
-      // Filter by category
       const matchesCategory = selectedCategory === 'All Categories' || 
         product.category.toLowerCase() === selectedCategory.toLowerCase();
 
-      // Filter low stock
       const matchesLowStock = !showLowStockOnly || 
         (Number(product.quantity) <= Number(product.minStock));
 
       return matchesSearch && matchesCategory && matchesLowStock;
     });
   }, [products, searchQuery, selectedCategory, showLowStockOnly]);
+
+  // Quick Inline Stock Adjustment (+1 / -1)
+  const handleAdjustStock = async (product, delta) => {
+    const id = product.id || product._id;
+    const currentQty = Number(product.quantity);
+    const newQty = Math.max(0, currentQty + delta);
+
+    if (newQty === currentQty) return;
+
+    // Optimistic UI Update
+    setProducts((prev) =>
+      prev.map((p) => ((p.id || p._id) === id ? { ...p, quantity: newQty } : p))
+    );
+
+    try {
+      const payload = {
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        quantity: newQty,
+        minStock: product.minStock,
+      };
+
+      const res = await productService.updateProduct(id, payload);
+      if (!res.success) {
+        // Revert on failure
+        fetchProducts();
+        showToast('Failed to update stock quantity', 'error');
+      } else {
+        if (newQty <= product.minStock && currentQty > product.minStock) {
+          showToast(`Alert: "${product.name}" is now Low Stock!`, 'error');
+        }
+      }
+    } catch (err) {
+      fetchProducts();
+      showToast(err.message || 'Error updating stock', 'error');
+    }
+  };
 
   // Product CRUD Handlers
   const handleOpenAddModal = () => {
@@ -180,7 +219,10 @@ function App() {
           {/* Dashboard Summary Statistics */}
           <DashboardStats products={products} />
 
-          {/* Controls Bar: Search, Category Filter, Low Stock Toggle, Add Button */}
+          {/* Stock Health Progress Bar */}
+          {!loading && !error && <StockHealthBar products={products} />}
+
+          {/* Controls Bar: Search, Category Filter, Low Stock Toggle, View Mode Switcher, Add Button */}
           <div className="controls-card">
             <div className="controls-left">
               <SearchBar
@@ -196,16 +238,46 @@ function App() {
               <button
                 className={`btn btn-toggle ${showLowStockOnly ? 'active' : ''}`}
                 onClick={() => setShowLowStockOnly(!showLowStockOnly)}
-                title="Show low stock items only"
+                title="Filter low stock items"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                 </svg>
-                <span>Low Stock Filter</span>
+                <span>Low Stock Alert</span>
               </button>
             </div>
 
             <div className="controls-right">
+              {/* View Switcher: Table View vs Grid Cards View */}
+              <div className="view-switcher">
+                <button
+                  className={`switch-btn ${viewMode === 'table' ? 'active' : ''}`}
+                  onClick={() => setViewMode('table')}
+                  title="Table View"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="8" y1="6" x2="21" y2="6" />
+                    <line x1="8" y1="12" x2="21" y2="12" />
+                    <line x1="8" y1="18" x2="21" y2="18" />
+                    <line x1="3" y1="6" x2="3.01" y2="6" />
+                    <line x1="3" y1="12" x2="3.01" y2="12" />
+                    <line x1="3" y1="18" x2="3.01" y2="18" />
+                  </svg>
+                </button>
+                <button
+                  className={`switch-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                  title="Grid Cards View"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                </button>
+              </div>
+
               <button className="btn btn-primary" onClick={handleOpenAddModal}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -216,8 +288,8 @@ function App() {
             </div>
           </div>
 
-          {/* Main Content Area based on states */}
-          <div className="table-card">
+          {/* Main Content Area: Table vs Grid Cards */}
+          <div className="content-view-wrapper">
             {loading ? (
               <LoadingState />
             ) : error ? (
@@ -240,11 +312,21 @@ function App() {
                     : undefined
                 }
               />
+            ) : viewMode === 'table' ? (
+              <div className="table-card">
+                <ProductTable
+                  products={filteredProducts}
+                  onEdit={handleOpenEditModal}
+                  onDelete={handleOpenDeleteModal}
+                  onAdjustStock={handleAdjustStock}
+                />
+              </div>
             ) : (
-              <ProductTable
+              <ProductCardsGrid
                 products={filteredProducts}
                 onEdit={handleOpenEditModal}
                 onDelete={handleOpenDeleteModal}
+                onAdjustStock={handleAdjustStock}
               />
             )}
           </div>

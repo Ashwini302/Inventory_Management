@@ -1,7 +1,7 @@
 import React from 'react';
 import LowStockBadge from './LowStockBadge';
 
-export const ProductTable = ({ products, onEdit, onDelete }) => {
+export const ProductTable = ({ products, onEdit, onDelete, onAdjustStock }) => {
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -27,8 +27,9 @@ export const ProductTable = ({ products, onEdit, onDelete }) => {
         <tbody>
           {products.map((product) => {
             const isLow = Number(product.quantity) <= Number(product.minStock);
+            const id = product.id || product._id;
             return (
-              <tr key={product.id || product._id} className={isLow ? 'row-low-stock' : ''}>
+              <tr key={id} className={isLow ? 'row-low-stock' : ''}>
                 <td className="font-semibold product-name-cell">
                   <span>{product.name}</span>
                 </td>
@@ -37,9 +38,26 @@ export const ProductTable = ({ products, onEdit, onDelete }) => {
                 </td>
                 <td className="font-medium">{formatCurrency(product.price)}</td>
                 <td>
-                  <span className={`quantity-badge ${isLow ? 'qty-low' : ''}`}>
-                    {product.quantity}
-                  </span>
+                  <div className="table-qty-control">
+                    <button
+                      className="table-stepper-btn"
+                      onClick={() => onAdjustStock(product, -1)}
+                      disabled={Number(product.quantity) <= 0}
+                      title="Decrease Stock (-1)"
+                    >
+                      -
+                    </button>
+                    <span className={`quantity-badge ${isLow ? 'qty-low' : ''}`}>
+                      {product.quantity}
+                    </span>
+                    <button
+                      className="table-stepper-btn"
+                      onClick={() => onAdjustStock(product, 1)}
+                      title="Increase Stock (+1)"
+                    >
+                      +
+                    </button>
+                  </div>
                 </td>
                 <td className="text-muted">{product.minStock}</td>
                 <td>
